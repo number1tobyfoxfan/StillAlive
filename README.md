@@ -56,3 +56,14 @@ Press `Ctrl+C` at any time to exit cleanly.
 ## License
 
 GPL-3.0
+
+## Raspberry Pi Compute Module 5
+
+The RPI CM5 supports Node.JS.
+This is running on Node.JS.
+It now runs without needing a branch.
+
+## Why did i move it to JS
+
+Last i checked you can't run C++ in your browser properly if needed to run this in a browser.
+I also am working on something that uses this.
