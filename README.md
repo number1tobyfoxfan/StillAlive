@@ -4,7 +4,7 @@
 
 A terminal recreation of the Portal ending credits song ("Still Alive") with synchronized lyrics, split-screen terminal layout, retro ASCII art, and authentic 8-bit PC speaker buzzer sound synthesized in real-time.
 
-Originally written in C++ by [CATDIMA](https://github.com/CATDIMA/StillAlive.git) for Linux tty motherboard buzzers, now running natively on **JavaScript / Node.js** cross-platform without needing a physical motherboard buzzer or C++ compilation.
+Originally written in C++ by [CATDIMA](https://github.com/number1tobyfoxfan/StillAlive.git) for Linux tty motherboard buzzers, now running natively on **JavaScript / Node.js** cross-platform without needing a physical motherboard buzzer or C++ compilation.
 
 Original song composed by Jonathan Coulton.
 
