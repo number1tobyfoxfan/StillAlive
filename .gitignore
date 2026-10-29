@@ -1,5 +1,6 @@
-### CMake ###
-build/*
-
-### VisualStudioCode ###
-.vscode/*
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+.vscode/

@@ -1,0 +1,25 @@
+{
+  "name": "portal-still-alive",
+  "version": "1.0.0",
+  "description": "Terminal recreation of Portal credits Still Alive song with synchronized lyrics, ASCII art, and 8-bit buzzer synthesizer",
+  "main": "index.js",
+  "bin": {
+    "still-alive": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "fast": "node index.js --fast",
+    "test": "node index.js --test"
+  },
+  "keywords": [
+    "portal",
+    "glados",
+    "still-alive",
+    "ascii-art",
+    "terminal",
+    "synthesizer",
+    "pc-speaker"
+  ],
+  "author": "CATDIMA (Ported to Node.js)",
+  "license": "GPL-3.0"
+}
