@@ -35,6 +35,8 @@ node index.js [options]
 | Option | Description |
 |---|---|
 | `-h, --help` | Show help screen |
+| `-a, --music-file <path>` | Play an audio file (MP3, WAV, OGG, FLAC) instead of buzzer. Starts when the first note plays (at 2.0s)! |
+| `-o, --audio-offset <ms>` | Custom start delay in milliseconds (default: 2000) |
 | `-f, --fast` | Run at 5x fast-forward speed |
 | `-s, --speed <multiplier>` | Custom playback speed (e.g. `node index.js -s 2` for 2x) |
 | `-m, --mute, --no-audio` | Run silently without audio |

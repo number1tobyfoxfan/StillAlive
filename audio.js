@@ -1,6 +1,6 @@
 /**
  * audio.js - Retro 8-bit buzzer sound synthesizer and cross-platform audio player
- * Emulates the motherboard PC speaker buzzer used in the original C++ StillAlive project.
+ * Emulates the motherboard PC speaker buzzer or plays custom audio files.
  */
 
 const fs = require('fs');
@@ -101,7 +101,7 @@ function synthesizeNotes(notes, speedMultiplier = 1, sampleRate = 44100) {
 }
 
 /**
- * Detects an audio playback command supported on this system
+ * Detects an audio playback command supported on this system for synthesized WAV
  */
 function detectAudioPlayer() {
   if (process.platform === 'linux') {
@@ -134,6 +134,62 @@ function detectAudioPlayer() {
         `(New-Object Media.SoundPlayer '${file.replace(/'/g, "''")}').PlaySync()`
       ]
     };
+  }
+
+  return null;
+}
+
+/**
+ * Detects the best player for an existing audio file (MP3, OGG, WAV, FLAC, M4A, etc.)
+ */
+function detectFilePlayer(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+
+  if (process.platform === 'darwin') {
+    if (commandExists('afplay')) {
+      return { cmd: 'afplay', getArgs: (f) => [f] };
+    }
+    if (commandExists('ffplay')) {
+      return { cmd: 'ffplay', getArgs: (f) => ['-nodisp', '-autoexit', '-loglevel', 'quiet', f] };
+    }
+  }
+
+  if (process.platform === 'win32') {
+    if (ext === '.wav') {
+      return {
+        cmd: 'powershell',
+        getArgs: (f) => [
+          '-NoProfile',
+          '-Command',
+          `(New-Object Media.SoundPlayer '${f.replace(/'/g, "''")}').PlaySync()`
+        ]
+      };
+    }
+    return {
+      cmd: 'powershell',
+      getArgs: (f) => [
+        '-NoProfile',
+        '-Command',
+        `Add-Type -AssemblyName presentationCore; $p = New-Object System.Windows.Media.MediaPlayer; $p.Open([System.Uri]'${f.replace(/'/g, "''")}'); $p.Play(); Start-Sleep -Seconds 300`
+      ]
+    };
+  }
+
+  // Linux / Unix
+  if (commandExists('ffplay')) {
+    return { cmd: 'ffplay', getArgs: (f) => ['-nodisp', '-autoexit', '-loglevel', 'quiet', f] };
+  }
+  if (commandExists('mpv')) {
+    return { cmd: 'mpv', getArgs: (f) => ['--no-video', '--really-quiet', f] };
+  }
+  if (ext === '.mp3' && commandExists('mpg123')) {
+    return { cmd: 'mpg123', getArgs: (f) => ['-q', f] };
+  }
+  if ((ext === '.wav' || ext === '.ogg' || ext === '.flac') && commandExists('paplay')) {
+    return { cmd: 'paplay', getArgs: (f) => [f] };
+  }
+  if (ext === '.wav' && commandExists('aplay')) {
+    return { cmd: 'aplay', getArgs: (f) => ['-q', f] };
   }
 
   return null;
@@ -191,8 +247,46 @@ function playWavBuffer(wavBuffer, player) {
   return { process: proc, promise, stop };
 }
 
+/**
+ * Plays a music file (MP3, OGG, WAV, etc.) asynchronously
+ */
+function playAudioFile(filePath) {
+  const absPath = path.resolve(filePath);
+  const player = detectFilePlayer(absPath);
+
+  if (!player) {
+    console.error(`Warning: No supported audio player found to play ${absPath}`);
+    return {
+      stop: () => {},
+      promise: Promise.resolve()
+    };
+  }
+
+  const proc = spawn(player.cmd, player.getArgs(absPath), {
+    stdio: 'ignore'
+  });
+
+  const stop = () => {
+    try {
+      proc.kill('SIGTERM');
+    } catch (_) {}
+  };
+
+  const promise = new Promise((resolve) => {
+    proc.on('close', () => resolve());
+    proc.on('error', (err) => {
+      console.error(`Audio playback error: ${err.message}`);
+      resolve();
+    });
+  });
+
+  return { process: proc, promise, stop };
+}
+
 module.exports = {
   synthesizeNotes,
   detectAudioPlayer,
-  playWavBuffer
+  detectFilePlayer,
+  playWavBuffer,
+  playAudioFile
 };

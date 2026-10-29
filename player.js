@@ -5,7 +5,7 @@
 
 const readline = require('readline');
 const { COMMAND, ASCII_IMAGES, asciiImages, lyrics, notes } = require('./song_data');
-const { synthesizeNotes, detectAudioPlayer, playWavBuffer } = require('./audio');
+const { synthesizeNotes, detectAudioPlayer, playWavBuffer, playAudioFile } = require('./audio');
 
 // Color themes
 const THEMES = {
@@ -29,6 +29,8 @@ class Player {
     this.testMode = Boolean(options.test);
     this.poweroff = Boolean(options.poweroff);
     this.theme = THEMES[options.color] || THEMES.yellow;
+    this.audioFile = options.audioFile || null;
+    this.audioOffset = options.audioOffset !== undefined ? options.audioOffset : null;
 
     // Box dimensions from original C++ StillAlive
     this.bordersWidth = 102;
@@ -52,7 +54,17 @@ class Player {
     this.startPrintPosX = 2;
 
     this.audioProcess = null;
+    this.audioTimer = null;
     this.stopped = false;
+  }
+
+  getFirstNoteTimeMs() {
+    let time = 0;
+    for (const n of notes) {
+      if (n.tone > 0) return time;
+      time += n.duration;
+    }
+    return 2000;
   }
 
   initScreen() {
@@ -111,18 +123,19 @@ class Player {
     this.moveTo(this.creatorsHeight - 1, cX);
     process.stdout.write(' ' + '-'.repeat(this.creatorsWidth - 2) + ' ');
 
-    // Creator box text (exact strings from Player.cpp)
+    // Creator box text
     this.moveTo(2, cX + 15);
     process.stdout.write('PORTAL - STILL ALIVE');
 
-    this.moveTo(4, cX + 2);
-    process.stdout.write('The code was ORIGINALLY written by CATDIMA');
+    this.moveTo(4, cX + 8);
+    const audioDesc = this.audioFile ? 'Playing audio file: ' + require('path').basename(this.audioFile).slice(0, 20) : 'Played by motherboard buzzer';
+    process.stdout.write(audioDesc.padEnd(38, ' '));
 
-    this.moveTo(5, cX + 2);
-    process.stdout.write('in C');
+    this.moveTo(13, cX + 2);
+    process.stdout.write('The code was written by CATDIMA');
 
-    this.moveTo(8, cX + 2);
-    process.stdout.write('Ported to javascript by number1tobyfoxfan');
+    this.moveTo(14, cX + 2);
+    process.stdout.write('on 02/09/2024');
   }
 
   clearLyricsWindow() {
@@ -154,14 +167,30 @@ class Player {
   async play() {
     this.initScreen();
 
-    // 1. Synthesize and start audio playback if not muted
-    let audioHandle = null;
+    // 1. Audio setup
     if (!this.mute) {
-      const playerInfo = detectAudioPlayer();
-      if (playerInfo) {
-        const wavBuffer = synthesizeNotes(notes, this.speedMultiplier);
-        audioHandle = playWavBuffer(wavBuffer, playerInfo);
-        this.audioProcess = audioHandle;
+      if (this.audioFile) {
+        // Play external music file. Start when the first note usually plays!
+        const delayMs = (this.audioOffset !== null
+          ? this.audioOffset
+          : this.getFirstNoteTimeMs()) / this.speedMultiplier;
+
+        if (delayMs <= 0) {
+          this.audioProcess = playAudioFile(this.audioFile);
+        } else {
+          this.audioTimer = setTimeout(() => {
+            if (!this.stopped) {
+              this.audioProcess = playAudioFile(this.audioFile);
+            }
+          }, delayMs);
+        }
+      } else {
+        // Default: synthesize and play 8-bit retro buzzer square wave notes
+        const playerInfo = detectAudioPlayer();
+        if (playerInfo) {
+          const wavBuffer = synthesizeNotes(notes, this.speedMultiplier);
+          this.audioProcess = playWavBuffer(wavBuffer, playerInfo);
+        }
       }
     }
 
@@ -226,8 +255,8 @@ class Player {
     // Wait for audio completion or brief pause
     if (this.testMode) {
       await sleep(500);
-    } else if (audioHandle && !this.stopped) {
-      await Promise.race([audioHandle.promise, sleep(3000)]);
+    } else if (this.audioProcess && !this.stopped) {
+      await Promise.race([this.audioProcess.promise, sleep(3000)]);
     }
 
     this.cleanup();
@@ -255,6 +284,10 @@ class Player {
 
   cleanup() {
     this.stopped = true;
+    if (this.audioTimer) {
+      clearTimeout(this.audioTimer);
+      this.audioTimer = null;
+    }
     if (this.audioProcess) {
       this.audioProcess.stop();
       this.audioProcess = null;
